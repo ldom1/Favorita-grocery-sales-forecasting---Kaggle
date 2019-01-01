@@ -12,21 +12,21 @@ import matplotlib.pyplot as plt
 import random as rd
 from tqdm import tqdm
 
-from processing_data import train_all
+from processing_data import train_all_processed
 from neural_network import neural_net_model
 
 # Train size
 train_size = 0.6
 
 # Split the train data to learn # Warning date -> split linearly
-X_train = train_all.drop(['unit_sales'],
-                         axis=1).loc[range(int(train_all.shape[0]*train_size))]
-y_train = train_all['unit_sales'].loc[range(int(train_all.shape[0]*train_size))]
-X_test = train_all.drop(['unit_sales'],
-                        axis=1).loc[range(int(train_all.shape[0]*train_size),
-                                    int(train_all.shape[0]))]
-y_test = train_all['unit_sales'].loc[range(int(train_all.shape[0]*train_size),
-                                     int(train_all.shape[0]))]
+X_train = train_all_processed.drop(['unit_sales'],
+                                   axis=1).loc[range(int(train_all_processed.shape[0]*train_size))]
+y_train = train_all_processed['unit_sales'].loc[range(int(train_all_processed.shape[0]*train_size))]
+X_test = train_all_processed.drop(['unit_sales'],
+                                   axis=1).loc[range(int(train_all_processed.shape[0]*train_size),
+                                               int(train_all_processed.shape[0]))]
+y_test = train_all_processed['unit_sales'].loc[range(int(train_all_processed.shape[0]*train_size),
+                                               int(train_all_processed.shape[0]))]
 
 # Norlmalize data
 scaler = MinMaxScaler()
@@ -36,7 +36,9 @@ y_train_norm = scaler.fit_transform(y_train.values.reshape(-1, 1))
 X_test_norm = scaler.fit_transform(X_test.values)
 y_test_norm = scaler.fit_transform(y_test.values.reshape(-1, 1))
 
-print(X_train.shape)
+print('X train shape:', X_train.shape)
+print('X test shape:', X_test.shape)
+print('Bounds for X train:')
 print(np.max(X_train_norm), np.max(y_train_norm), np.min(y_train_norm),
       np.min(y_train_norm))
 
@@ -54,10 +56,10 @@ def denormalize(y_train, norm_data):
 
 # Input data
 nb_input = X_train.shape[1]
-nb_hidden1 = 128
-nb_hidden2 = 128
-batch_size = 100000
-nb_epoch = 25
+nb_hidden1 = 64
+nb_hidden2 = 64
+batch_size = 10000
+nb_epoch = 30
 
 # Initialize the model
 X_tf = tf.placeholder(tf.float32)
@@ -79,6 +81,11 @@ c_test = []
 err_t = []  # norm l2
 err_test = []
 
+# Drop out level
+prob_1 = 0.3
+prob_2 = 0.3
+
+
 # Training
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
@@ -93,15 +100,18 @@ with tf.Session() as sess:
     ax.plot(range(len(y_train)), y_t, label='Original')
     plt.show()
 
-    try:
+    '''try:
         saver.restore(sess, 'NN_favorita_grocery_sales.ckpt')
     except Exception:
-        pass
+        pass'''
 
     for i in tqdm(range(nb_epoch)):
 
         # Define and create batch samples
-        batch_start = rd.randint(0, X_train_norm.shape[0]-batch_size)
+        try:
+            batch_start = rd.randint(0, X_train_norm.shape[0]-batch_size)
+        except ValueError:
+            batch_start = 0
 
         X_train_norm_batch = X_train_norm[np.arange(batch_start,
                                                     batch_start+batch_size),
@@ -120,23 +130,33 @@ with tf.Session() as sess:
             sess.run([cost, train],
                      feed_dict={X_tf: X_train_norm_batch[j, :].reshape(1, nb_input),
                                 y_tf: y_train_norm_batch[j],
-                                keep_prob_1: 0.3,
-                                keep_prob_2: 0.3})
-        pred = sess.run(output, feed_dict={X_tf: X_train_norm_batch})
+                                keep_prob_1: prob_1,
+                                keep_prob_2: prob_2})
+        pred = sess.run(output, feed_dict={X_tf: X_train_norm_batch,
+                                           keep_prob_1: 1.0,
+                                           keep_prob_2: 1.0})
         pred = denormalize(y_train_batch, pred)
 
         # Compute the accuracy
         err_t.append(np.linalg.norm(pred - y_train_batch))
         c_t.append(sess.run(cost, feed_dict={X_tf: X_train_norm_batch,
-                                             y_tf: y_train_norm_batch}))
+                                             y_tf: y_train_norm_batch,
+                                             keep_prob_1: 1.0,
+                                             keep_prob_2: 1.0}))
         c_test.append(sess.run(cost, feed_dict={X_tf: X_test_norm,
-                                                y_tf: y_test_norm}))
+                                                y_tf: y_test_norm,
+                                                keep_prob_1: 1.0,
+                                                keep_prob_2: 1.0}))
         print('Epoch :', i, 'Cost :', c_t[i], 'Err (l2) :', err_t[i])
 
-    pred = sess.run(output, feed_dict={X_tf: X_test_norm})
+    pred = sess.run(output, feed_dict={X_tf: X_test_norm,
+                                       keep_prob_1: 1.0,
+                                       keep_prob_2: 1.0})
 
     print('Cost :', sess.run(cost, feed_dict={X_tf: X_test_norm,
-                                              y_tf: y_test_norm}))
+                                              y_tf: y_test_norm,
+                                              keep_prob_1: 1.0,
+                                              keep_prob_2: 1.0}))
     y_test = denormalize(y_test, y_test_norm)
     pred = denormalize(y_test, pred)
 

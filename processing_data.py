@@ -26,18 +26,21 @@ transactions = pd.read_csv(path + 'transactions.csv', sep=',')
 test = pd.read_csv(path + 'test.csv', sep=',')
 
 # Construct the dataset
-train_small = train
+train_small = train[:1000000]
 
 # Verify that unit_sales positive
-train_small['unit_sales'] = train_small['unit_sales'].apply(lambda x: 0 if x <= 0 else x)
-
+train_small['unit_sales'] = train_small['unit_sales'].apply(lambda x:
+                                                            0 if x <= 0 else x)
 # Visualiser ventes par magasins
 s_ = np.unique(train_small['store_nbr'])
 s_ = s_[rd.randint(0, len(s_)-1)]
 single_store = train_small[train_small['store_nbr'] == s_]
-data_to_viz = single_store.groupby(['date', 'store_nbr'], as_index=False)['item_nbr'].count()
-plt.plot(data_to_viz['date'], data_to_viz['item_nbr'])
-plt.title('Vente - Store ' + str(s_))
+data_to_viz = single_store.groupby(['date', 'store_nbr'],
+                                   as_index=False)['item_nbr'].count()
+plt.plot(range(len(data_to_viz['item_nbr'])), data_to_viz['item_nbr'])
+plt.xlabel('days')
+plt.ylabel('number of sales (total)')
+plt.title('Total number of sales - Store ' + str(s_))
 plt.show()
 
 # Create the training dataframe
@@ -48,6 +51,8 @@ train_all = train_small.merge(store, left_on='store_nbr',
 train_all = train_all.merge(oil, left_on='date', right_on='date', how='left')
 
 # Merge holiday
+# issue of several causes for holiday
+holidays_event = holidays_event.drop_duplicates(subset='date')
 train_all = train_all.merge(holidays_event, left_on='date', right_on='date',
                             how='left')
 # Merge items
@@ -123,4 +128,7 @@ try:
 except ValueError:
     pass
 
-train_all = train_all[selection]
+train_all_processed = train_all[selection]
+
+print('X train original shape:', train.shape)
+print('X train processed shape:', train_all_processed.shape)
