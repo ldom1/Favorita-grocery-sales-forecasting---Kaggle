@@ -26,7 +26,7 @@ transactions = pd.read_csv(path + 'transactions.csv', sep=',')
 test = pd.read_csv(path + 'test.csv', sep=',')
 
 # Construct the dataset
-train_small = train[:1000000]
+train_small = train[:2000000]
 
 # Verify that unit_sales positive
 train_small['unit_sales'] = train_small['unit_sales'].apply(lambda x:
