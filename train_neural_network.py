@@ -58,7 +58,7 @@ def denormalize(y_train, norm_data):
 nb_input = X_train.shape[1]
 nb_hidden1 = 64
 nb_hidden2 = 64
-batch_size = 10000
+batch_size = 20000
 nb_epoch = 30
 
 # Initialize the model
