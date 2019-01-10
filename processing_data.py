@@ -12,6 +12,10 @@ import os
 import random as rd
 from sklearn.impute import SimpleImputer
 from sklearn.feature_selection import f_regression
+from seasonal import *
+from statsmodels.tsa.tsatools import *
+from statsmodels.tsa.stattools import *
+from statsmodels.tsa.tsatools import detrend
 
 # Input data
 path = os.getcwd() + '/all/'
@@ -26,7 +30,7 @@ transactions = pd.read_csv(path + 'transactions.csv', sep=',')
 test = pd.read_csv(path + 'test.csv', sep=',')
 
 # Construct the dataset
-train_small = train[:4000000]
+train_small = train[:50000000]
 
 # Verify that unit_sales positive
 train_small['unit_sales'] = train_small['unit_sales'].apply(lambda x:
@@ -88,16 +92,13 @@ for key in missing_rate.keys():
         temp_no_miss = imp.transform(np.array(train_all[key]).reshape(-1, 1))
         train_all[key] = temp_no_miss
 
-# Transform date to number
-train_all['date'] = train_all['date'].apply(lambda x:
-                                            int(''.join(i for i in x
-                                                        if i.isdigit())))
+
 # Manage category transformation
 categorical_data = []
 numerical_data = []
 
 for col in train_all.columns:
-    if train_all[col].dtype == 'O':
+    if train_all[col].dtype == 'O' and col != 'date':
         categorical_data.append(col)
     else:
         numerical_data.append(col)
@@ -105,6 +106,11 @@ for col in train_all.columns:
 # Encode the categorical data
 for category_col in categorical_data:
     train_all[category_col] = train_all[category_col].astype('category').cat.codes
+
+# Transform date to number
+train_all['date'] = train_all['date'].apply(lambda x:
+                                            int(''.join(i for i in x
+                                                        if i.isdigit())))
 
 # Feature importance
 f_value, p_values = f_regression(train_all.drop(['unit_sales'], axis=1),
@@ -120,7 +126,6 @@ plt.xticks(range(len(p_values)), train_all.columns)
 plt.show()
 
 # We select all values
-
 # Define X and y
 selection = list(train_all.columns)
 try:
@@ -132,3 +137,28 @@ train_all_processed = train_all[selection]
 
 print('X train original shape:', train.shape)
 print('X train processed shape:', train_all_processed.shape)
+'''
+# Date
+train_all_processed.plot(y='unit_sales', figsize=(14, 4))
+
+# ACF et PACF pour déterminer la saisonnalité
+acf_consum = acf(train_all_processed['unit_sales'])
+pacf_consum = pacf(train_all_processed['unit_sales'])
+fig = plt.figure(figsize=(7, 5))
+plt.bar(np.arange(0, len(acf_consum)), acf_consum)
+plt.title('ACF')
+plt.show()
+fig = plt.figure(figsize=(7, 5))
+plt.bar(np.arange(0, len(pacf_consum)), pacf_consum)
+plt.title('PACF')
+plt.show()
+
+notrend = detrend(train_all_processed.unit_sales)
+train_all_processed["notrend"] = notrend
+train_all_processed.plot(y=["unit_sales", "notrend"], figsize=(14,4))
+
+cv_seasons, trend = fit_seasons(train_all_processed["notrend"])
+train_all_processed['unit_sales'] = trend
+
+train_all_processed.plot(y=["unit_sales", "notrend"], figsize=(14,4))
+'''
