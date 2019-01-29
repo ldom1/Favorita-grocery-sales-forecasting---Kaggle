@@ -73,7 +73,7 @@ def neural_net_model_3layers(X_data, nb_input, nb_hidden1, nb_hidden2,
     b_3 = tf.Variable(tf.zeros([nb_hidden3]))
     layer_3 = tf.add(tf.matmul(drop_out_2, W_3), b_3)
     layer_3 = tf.nn.relu(layer_3)
-    # apply DropOut to hidden layer 2
+    # apply DropOut to hidden layer 3
     drop_out_3 = tf.nn.dropout(layer_3, keep_prob_3)  # DROP-OUT here
 
     # Output layer
